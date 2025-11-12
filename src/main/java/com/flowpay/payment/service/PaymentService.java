@@ -1,5 +1,6 @@
 package com.flowpay.payment.service;
 
+import com.flowpay.payment.integration.NotificationClient;
 import com.flowpay.payment.model.PaymentResponse;
 import com.flowpay.payment.repository.AccountRepository;
 import org.springframework.http.HttpStatus;
@@ -14,9 +15,11 @@ public class PaymentService {
     private static final String PAYEE = "pedro";
 
     private final AccountRepository accountRepository;
+    private final NotificationClient notificationClient;
 
-    public PaymentService(AccountRepository accountRepository) {
+    public PaymentService(AccountRepository accountRepository, NotificationClient notificationClient) {
         this.accountRepository = accountRepository;
+        this.notificationClient = notificationClient;
     }
 
     public PaymentResponse payFromJoaoToPedro(BigDecimal amount) {
@@ -33,6 +36,9 @@ public class PaymentService {
 
         BigDecimal payerBalance = accountRepository.getBalance(PAYER);
         BigDecimal payeeBalance = accountRepository.getBalance(PAYEE);
+
+        // Fire-and-forget notification to n8n (errors are logged but do not fail the payment)
+        notificationClient.sendPaymentCompleted(PAYER, PAYEE, amount);
 
         return new PaymentResponse(PAYER, PAYEE, amount, payerBalance, payeeBalance);
     }

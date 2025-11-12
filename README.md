@@ -99,4 +99,34 @@ Notes:
 - The `VECTOR(768)` dimension must match your embedding model size.
 - If your Postgres/pgvector version doesn’t support HNSW, switch the index to IVFFlat.
  - To stop and remove containers: `docker compose down`
- - To reset DB data: `docker compose down -v` (removes the named volume `db-data`)
+- To reset DB data: `docker compose down -v` (removes the named volume `db-data`)
+
+## n8n integration (email notification)
+Goal: send an email after a successful payment.
+
+1) In n8n, create a workflow:
+- Webhook node
+  - Method: POST
+  - Path: `/event/payment.completed`
+  - Respond: JSON → `{ "status": "OK" }`
+- Email node (SMTP/Gmail)
+  - Subject: `Você recebeu um pagamento!`
+  - Body:
+    `Olá {{$json.receiverId}}, você recebeu R${{$json.amount}} de {{$json.payerId}}.`
+  - Map recipient as you prefer (fixed or from JSON).
+
+Tip for local testing without real SMTP: use MailHog (already included in docker compose).
+- SMTP Host: `mailhog`
+- SMTP Port: `1025`
+- No auth/SSL
+- View captured emails at `http://localhost:8025`
+
+2) Copy the production webhook URL from the Webhook node (it will look like `http://<n8n-host>/webhook/event/payment.completed`).
+
+3) Configure the app to call n8n:
+- Set env var `N8N_WEBHOOK_URL` (or edit `.env`). Default: `http://localhost:5678/webhook/event/payment.completed`.
+
+On each successful `/payment`, the app POSTs to n8n with:
+```json
+{ "payerId": "joao", "receiverId": "pedro", "amount": 123.45 }
+```
