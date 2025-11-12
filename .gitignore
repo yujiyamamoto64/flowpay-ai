@@ -17,3 +17,5 @@ release.properties
 .DS_Store
 Thumbs.db
 
+# Local environment
+.env

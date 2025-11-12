@@ -44,3 +44,59 @@ Tip: if you prefer the Maven Wrapper, run `mvn -N wrapper` once and then use `./
 - Initial balances: Joao = 1000.00, Pedro = 500.00.
 - All state is volatile; restarting the app resets balances.
 
+## PostgreSQL + pgvector (for RAG)
+- Dependencies: Spring JDBC, PostgreSQL driver, Flyway (already added).
+- Configure environment variables or edit `src/main/resources/application.properties`:
+  - `DB_URL=jdbc:postgresql://localhost:5432/flowpay`
+  - `DB_USER=postgres`
+  - `DB_PASSWORD=postgres`
+- Flyway migrations provided:
+  - `V1__enable_pgvector.sql`: enables `vector` extension
+  - `V2__create_documents.sql`: creates `documents(id, content, embedding VECTOR(768))` and HNSW index
+
+### Quick local setup (Docker Compose)
+Spin up Postgres (pgvector) and the app:
+
+```bash
+docker compose up -d --build
+```
+
+This starts:
+- `db`: Postgres with pgvector on `localhost:5432` (db: `flowpay`, user/pass: `postgres`)
+- `app`: flowpay-ai on `http://localhost:8080`
+
+### Environment variables
+- A local `.env` file is included for convenience (ignored by Git). It provides defaults used by Spring and VS Code:
+  - `DB_URL=jdbc:postgresql://localhost:5432/flowpay`
+  - `DB_USER=postgres`
+  - `DB_PASSWORD=postgres`
+  - `SERVER_PORT=8080`
+  - `JAVA_OPTS=`
+You can edit `.env` to match your environment.
+
+### RAG endpoints
+- Upsert document: `POST /documents`
+  - Body:
+    ```json
+    {
+      "content": "some text",
+      "embedding": [0.01, 0.02, 0.03, ...]
+    }
+    ```
+  - Response: `{ "id": "<uuid>" }`
+
+- Search by embedding: `POST /documents/search`
+  - Body:
+    ```json
+    {
+      "embedding": [0.01, 0.02, 0.03, ...],
+      "topK": 5
+    }
+    ```
+  - Response: array of `{ id, content, distance }` ordered by similarity
+
+Notes:
+- The `VECTOR(768)` dimension must match your embedding model size.
+- If your Postgres/pgvector version doesn’t support HNSW, switch the index to IVFFlat.
+ - To stop and remove containers: `docker compose down`
+ - To reset DB data: `docker compose down -v` (removes the named volume `db-data`)

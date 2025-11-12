@@ -1,0 +1,14 @@
+target/
+.git/
+.idea/
+.vscode/
+.mvn/
+*.iml
+Dockerfile
+docker-compose.yml
+README.md
+.DS_Store
+Thumbs.db
+
+# Avoid sending local secrets to Docker build context
+.env
